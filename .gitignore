@@ -1,0 +1,21 @@
+# Jupyter
+.ipynb_checkpoints/
+*.pyc
+__pycache__/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Notebook outputs from local runs (don't pollute the canonical version)
+# Keep cell outputs IN the notebook only when they tell a useful story —
+# in this repo, the notebook is shipped output-stripped so users see a
+# clean state on first open.
+
+# One-shot maintenance script — kept around for record but not part of
+# the canonical run.
+_genericize.py
