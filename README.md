@@ -66,30 +66,21 @@ The previous attempt — an over-simplified hand-rolled trainer that skipped mos
 
 ## What's in the notebook
 
-| Section | Cells | What |
+| Cell | Est. time | What |
 |---|---|---|
-| 0. Configure your wake word | 0 | **Edit `TARGET_PHRASE`, `MODEL_NAME`, and `LANGUAGE` here** |
-| 1. Comprehensive install | 1 | apt + pip, with `piper-tts --no-deps` last so nothing clobbers the Py3.12-compatible `piper-phonemize-cross`; `piper-sample-generator` v3+ for multilingual .onnx voices |
-| 2. Clone openwakeword | 2 | openwakeword editable install with namespace-package fix |
-| 2b. Download TTS voices | 2b | en_US: libritts .pt (904 speakers). Other languages: auto-discover Piper .onnx voices from voices.json (36 languages) |
-| 3. Apply runtime patches | 3 | 5 idempotent patches (torchaudio.set_audio_backend no-op, generate_samples shim, HF Hub timeouts, torchaudio.info shim, train.py val dtype cast) |
-| 4. Pre-flight | 4 | Hard-fails if any dep / file isn't ready. Catches future Colab regressions before any slow work |
-| 5. Shared models (mel+embedding) | 5 | openwakeword's pretrained mel-spectrogram + embedding ONNX/TFLite downloads |
-| 6. MIT impulse responses | 6 | ~270 IRs for reverb augmentation |
-| 7. FMA + ACAV downloads | 7 | ~8 GB FMA small (background noise) + ~17 GB ACAV100M features (negative training corpus). Both with resume |
-| 8. FMA MP3 → 16 kHz mono WAV | 8 | 1500 conversions for audiomentations |
-| 9. Subsample ACAV | 9 | ~1.7 GB train slice + ~170 MB val slice (raw `(M, 96)`, NOT reshaped — trainer slides 16-frame window itself) |
-| 10. Build training config | 10 | Self-contained config from cell 0 variables |
-| 10b. Patch deep-phonemizer | 10b | PyTorch 2.x torch.load compat |
-| 11. Generate Piper TTS clips | 11 | Idempotent — re-running skips cached dirs. Verifies all 4 dirs (positive_train/test, negative_train/test) |
-| 12. Resample 22050 → 16000 Hz | 12 | Piper TTS outputs at native sample rate; openwakeword expects 16000 |
-| 13. Augment + featurise | 13 | Outputs `(N, 16, 96)` feature .npy files |
-| 14. Hand-rolled trainer | 14 | The interesting bit — read the comments |
-| 15. Ensemble + ONNX & TFLite export + download | 15 | 90/90/10 percentile filter, average qualified state_dicts, sigmoid-baked ONNX + TFLite via Keras weight transfer, browser download |
+| **0. Config** | instant | **Edit `TARGET_PHRASE`, `MODEL_NAME`, and `LANGUAGE`** |
+| **1. Install** | ~2 min | apt + pip in correct order; `piper-phonemize-cross` first, `piper-tts --no-deps` last, `piper-sample-generator` v3+ for multilingual |
+| **2. Clone + voices + patches** | ~2 min | Clone openwakeword, download TTS voices (libritts .pt for en_US, auto-discovered .onnx for 35 other languages), apply 5 runtime patches |
+| **3. Pre-flight** | instant | Hard-fails if any dep/file is missing — gate before slow downloads |
+| **4. Download data** | ~15 min | Embedding models + MIT impulse responses + FMA music + ACAV features. All with resume |
+| **5. Prepare audio** | ~6 min | FMA MP3 → 16 kHz WAV conversion + ACAV subsample (1.7 GB train + 170 MB val) |
+| **6. Config + clips** | ~15 min | Build training YAML, patch deep-phonemizer, generate TTS clips, resample to 16 kHz |
+| **7. Augment + train** | ~40 min | Augment with noise/reverb, extract features, 3-stage training with FP/hour validation |
+| **8. Export + download** | ~1 min | Ensemble checkpoints, export ONNX + TFLite, verify, browser download |
 
 ## What can go wrong (and how to fix)
 
-**Recall too low (<18/20 fires)?** Bump `n_samples` in cell 20 to 5000. Or set `target_recall` from 0.5 to 0.7. Or add `augmentation_rounds: 2` for more variety per positive clip.
+**Recall too low (<18/20 fires)?** Bump `n_samples` in cell 6 to 5000. Or set `target_recall` from 0.5 to 0.7. Or add `augmentation_rounds: 2` for more variety per positive clip.
 
 **FP rate too high (>1 phantom per 30 min real-life)?** Bump `max_negative_weight` from 1500 → 3000. Or record 30 min of YOUR target ambient (TV, your speaker setup, your kitchen) and append features to `acav_val_subset.npy` so the trainer's FP/hour metric reflects what matters to you.
 
